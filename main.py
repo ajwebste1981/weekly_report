@@ -217,7 +217,7 @@ def fetch_reddit_hot_posts(subreddits):
         subreddit = subreddit.strip()
         url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=5"
         try:
-            response = requests.get(url, headers={'User-agent': 'Python Weekly Games Report Bot v1.0'})
+            response = requests.get(url, headers={'User-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'})
             response.raise_for_status()
             data = response.json()
             posts = data['data']['children']
