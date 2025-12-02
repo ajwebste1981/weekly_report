@@ -592,7 +592,7 @@ if __name__ == "__main__":
     }
 
     genai.configure(api_key=config['GEMINI_API_KEY'])
-    config['genai_model'] = genai.GenerativeModel('gemini-2.0-flash')
+    config['genai_model'] = genai.GenerativeModel('gemini-2.5-flash')
     
     token_info_1 = json.loads(config['OAUTH_TOKEN_JSON'])
     config['creds_account_1'] = Credentials.from_authorized_user_info(token_info_1, SCOPES)
