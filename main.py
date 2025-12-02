@@ -18,6 +18,7 @@ from email.utils import formataddr
 import google.generativeai as genai
 import requests
 import feedparser
+from difflib import SequenceMatcher
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -128,6 +129,29 @@ def generate_hero_image(project_id, location, gcs_bucket_name, prompt_text):
     except Exception as e:
         print(f"FATAL: Hero image generation failed: {e}")
         return "https://storage.googleapis.com/gemini-generative-ai-python-static/placeholder.png"
+
+
+def deduplicate_articles(articles, threshold=0.7):
+    """
+    Filters a list of article dictionaries, removing those with titles similar to already accepted articles.
+    """
+    unique_articles = []
+    print(f"Deduplicating {len(articles)} articles...")
+    
+    for article in articles:
+        is_duplicate = False
+        for unique in unique_articles:
+            similarity = SequenceMatcher(None, article['title'], unique['title']).ratio()
+            if similarity > threshold:
+                print(f"Duplicate found (Similarity: {similarity:.2f}):\n  - New: {article['title']}\n  - Existing: {unique['title']}")
+                is_duplicate = True
+                break
+        
+        if not is_duplicate:
+            unique_articles.append(article)
+            
+    print(f"Reduced from {len(articles)} to {len(unique_articles)} articles.")
+    return unique_articles
 
 # --- ### WEEKLY RSS/API FUNCTIONS ### ---
 
@@ -301,8 +325,8 @@ def run_weekly_games_report(config):
     core_analysis_feeds = ["https://www.gamesindustry.biz/feed", "https://www.gamedeveloper.com/rss.xml", "http://feeds.feedburner.com/venturebeat/games", "https://esportsinsider.com/feed", "https://investgame.net/feed/"]
     player_insight_feeds = ["https://www.pocketgamer.biz/rss/", "https://kotaku.com/rss", "http://feeds.feedburner.com/ign/all", "https://www.eurogamer.net/feed", "https://www.polygon.com/rss/index.xml", "https://www.vg247.com/feed", "https://www.gamespot.com/feeds/mashup", "https://www.pcgamer.com/rss/", "https://news.xbox.com/en-us/feed/", "https://mynintendonews.com/feed/", "https://store.steampowered.com/feeds/news.xml", "https://feeds.feedburner.com/psblog"]
     
-    core_news_structured = fetch_rss_feed_for_weekly(core_analysis_feeds)
-    player_news_structured = fetch_rss_feed_for_weekly(player_insight_feeds)
+    core_news_structured = deduplicate_articles(fetch_rss_feed_for_weekly(core_analysis_feeds))
+    player_news_structured = deduplicate_articles(fetch_rss_feed_for_weekly(player_insight_feeds))
     
     core_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in core_news_structured])
     player_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in player_news_structured])
@@ -310,7 +334,8 @@ def run_weekly_games_report(config):
 
     print("--- Fetching Developer Learnings & Design ---")
     learning_feeds = ["https://www.gamedeveloper.com/rss.xml", "https://80.lv/articles/feed.xml", "https://howtomarketagame.com/feed/"]
-    learning_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in fetch_rss_feed_for_weekly(learning_feeds)])
+    learning_news_structured = deduplicate_articles(fetch_rss_feed_for_weekly(learning_feeds))
+    learning_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in learning_news_structured])
 
     learning_youtube_channels = {"GDC": "UC0JB7TSe4MAgOdGSh5QZ2aQ", "Game Maker's Toolkit": "UCqJ-Xo29CKyLTB3A_p2qE6A", "AI and Games": "UCov_51F0betb6hJ6Gumxg3Q"}
     all_videos = []
@@ -320,7 +345,8 @@ def run_weekly_games_report(config):
 
     print("--- Fetching Technology & Tools Watch ---")
     engine_feeds = ["https://www.unrealengine.com/en-US/rss", "https://blog.unity.com/rss", "https://godotengine.org/rss.xml", "https://aras-p.info/atom.xml", "https://uploadvr.com/feed/", "https://www.roadtovr.com/feed/", "https://blogs.nvidia.com/blog/category/gaming/feed/"]
-    engine_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in fetch_rss_feed_for_weekly(engine_feeds)])
+    engine_news_structured = deduplicate_articles(fetch_rss_feed_for_weekly(engine_feeds))
+    engine_news_raw = "\n\n".join([f"Title: {article['title']}\nSummary: {article['summary']}" for article in engine_news_structured])
 
     print("--- Fetching Community & Release Data ---")
     reddit_subreddits = ["gamedev", "truegamedev", "unity3d", "unrealengine", "godot", "GraphicsProgramming", "proceduralgeneration"]
